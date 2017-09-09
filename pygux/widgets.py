@@ -22,6 +22,7 @@ class Colours(object):
     blue = (0, 0, 255)
     electric_blue = (0, 191, 255)
     pale_blue = (0, 131, 235)
+    dark_pale_blue = (0, 101, 205)
 
 class Panel(object):
     def __init__(self, x, y, w, h, core):
@@ -39,6 +40,11 @@ class Panel(object):
 
         self.core.registerHandler(MOUSEBUTTONDOWN, self.mouseDown)
         self.core.registerHandler(MOUSEBUTTONUP, self.mouseUp)
+
+    def addWidgetObj(self, widget):
+        widget.parent = self
+        widget.display = self.display
+        self.widgets.append(widget)
 
     def addWidget(self, widgetClass, *args, **kw):
         kw['parent'] = self
@@ -95,11 +101,8 @@ class Widget(object):
         self.x, self.y = x, y
         self.w, self.h = w, h
 
-        self.display = None
-        self.surf = None
         self.parent = parent
         self.display = display
-        self.surf = parent.surface
 
     def update(self):
         # Called on every display loop - must return True if re-render required
@@ -397,7 +400,7 @@ class OldSchoolMeter(Widget):
 class Button(Widget):
     touch = True
     def __init__(self, text, x, y, w, h, callback=None, toggle=False,
-                 toggle_text=None, toggle_colour=Colours.yellow,
+                 toggle_text=None, toggle_colour=Colours.dark_pale_blue,
                  toggle_txt_col=Colours.black, txt_col=Colours.white,
                  bg_colour=Colours.pale_blue, font=None, **kw):
         Widget.__init__(self, x, y, w, h, **kw)
@@ -405,7 +408,10 @@ class Button(Widget):
         self.callback = callback
         self.bg_colour = bg_colour
         self.toggle_colour = toggle_colour
-        self.toggle_text = toggle_text
+        if toggle_text:
+            self.toggle_text = toggle_text
+        else:
+            self.toggle_text = self.text
         self.toggle = toggle
 
         self.txt_col = txt_col
@@ -430,7 +436,6 @@ class Button(Widget):
         else:
             surface.fill(self.toggle_colour)
             btText = self.font.render(self.toggle_text, True, self.toggle_txt_col)
-
             c1 = Colours.black
             c2 = Colours.white
 
@@ -446,15 +451,18 @@ class Button(Widget):
         pygame.draw.line(surface, c2, (self.w-1, 0), (self.w-1, self.h-1))
         pygame.draw.line(surface, c2, (self.w-1, self.h-1), (0, self.h-1))
 
-        self.surf.blit(surface, (self.x, self.y))
+        self.parent.surface.blit(surface, (self.x, self.y))
 
     def touched(self):
         if self.toggle:
             self.state = not self.state
-        self.refresh = True
-        self.parent.update() # Force parent update so callback doesn't block redraw
+
         if self.callback:
-            self.callback()
+            self.refresh = self.callback(self)
+        else:
+            self.refresh = True
+
+        self.parent.update() # Force parent update so callback doesn't block redraw
 
     def update(self):
         if self.refresh:
