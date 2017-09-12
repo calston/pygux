@@ -403,22 +403,28 @@ class Button(Widget):
                  toggle_text=None, toggle_colour=Colours.dark_pale_blue,
                  toggle_txt_col=Colours.black, txt_col=Colours.white,
                  bg_colour=Colours.pale_blue, font=None, **kw):
+        """Button widget
+        """
         Widget.__init__(self, x, y, w, h, **kw)
+
+        self.state = 0
+        self.refresh = False
+
         self.text = text
+        self.txt_col = txt_col
+
         self.callback = callback
         self.bg_colour = bg_colour
+
+        self.toggle = toggle
         self.toggle_colour = toggle_colour
+
         if toggle_text:
             self.toggle_text = toggle_text
         else:
             self.toggle_text = self.text
-        self.toggle = toggle
 
-        self.txt_col = txt_col
         self.toggle_txt_col = toggle_txt_col
-
-        self.state = 0
-        self.refresh = False
 
         if not font:
             self.font = self.display.font
