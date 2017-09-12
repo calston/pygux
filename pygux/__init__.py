@@ -46,18 +46,21 @@ class Application(object):
         """Called for each clock tick"""
         pass
 
+    def loop(self):
+        self.processEvents()
+        self.frame()
+
     def mainLoop(self):
         while not self.terminated:
             self.clock.tick(self.freq)
-            self.processEvents()
-            self.frame()
+            self.loop()
 
     def initializeVideo(self):
         self.display = display.TouchScreen()
+        self.display.flip()
 
     def start(self):
         self.initializeVideo()
-        self.display.flip()
         self.mainLoop()
 
     def stop(self, event):
@@ -67,10 +70,8 @@ class Application(object):
         print event.key
 
     def mouseUp(self, event):
-        #print "Done"
         pass
 
     def mouseDown(self, event):
-        #print "Click"
         pass
 
