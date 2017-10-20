@@ -8,6 +8,7 @@ class Colours(object):
     # A bunch of random colours
 
     white = (255, 255, 255)
+    very_light_gray = (192, 192, 192)
     light_gray = (128, 128, 128)
     med_gray = (64, 64, 64)
     gray = (32, 32, 32)
@@ -479,7 +480,7 @@ class Button(Widget):
 
 class Scope(Widget):
     touch = True
-    def __init__(self, x, y, w, h, bg_colour=Colours.white, scale=1.0, agr_fn=lambda l: sum(l)/len(l), **kw):
+    def __init__(self, x, y, w, h, bg_colour=Colours.white, scale=1.0, agr_fn=lambda l: max(l), **kw):
         """Scope widget
         """
         Widget.__init__(self, x, y, w, h, **kw)
@@ -517,7 +518,8 @@ class Scope(Widget):
                      for i in xrange(0, len(data), compression)]
 
             for i, v in enumerate(tdata):
-                newv = (self.aggregation(v) / self.scale) * half_h
+                newv = int((self.aggregation(v) / self.scale) * half_h)
+
                 self.data.append((i, newv))
 
         self.refresh = True
@@ -526,22 +528,50 @@ class Scope(Widget):
         surface = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
         surface.fill(self.bg_colour)
 
-        half_h = (self.h/2) - 1
+        half_h = (self.h/2)
+        half_w = (self.w/2)
+
+        axis_col = Colours.med_gray
+
+        # Outside box
+        pygame.draw.line(surface, axis_col, (0, 0), (self.w, 0))
+        pygame.draw.line(surface, axis_col, (self.w, 0), (self.w, self.h))
+        pygame.draw.line(surface, axis_col, (self.w, self.h), (0, self.h))
+        pygame.draw.line(surface, axis_col, (0, self.h), (0,0))
+
+        # Center cross
+        pygame.draw.line(surface, axis_col, (half_w, 0), (half_w, self.h))
+        pygame.draw.line(surface, axis_col, (0, half_h), (self.w, half_h))
+
+        # Major ticks
+        major_col = Colours.very_light_gray
+        gap = self.w/10
+        for i in range(4):
+            x = gap * (i + 1)
+            pygame.draw.line(surface, major_col, (half_w + x, 0), (half_w + x, self.h))
+            pygame.draw.line(surface, major_col, (half_w - x, 0), (half_w - x, self.h))
+
+        numy = int(half_h / gap)
+        for i in range(numy):
+            y = gap * (i + 1)
+            pygame.draw.line(surface, major_col, (0, half_h + y), (self.w, half_h + y))
+            pygame.draw.line(surface, major_col, (0, half_h - y), (self.w, half_h - y))
+
 
         c1 = Colours.blue
 
-        last_cord = (0, 0)
-
+        # Plot the lines
         for i, d in enumerate(self.data):
             if i > 0:
                 x1, y1 = self.data[i-1]
                 x2, y2 = d
 
+                # Y is inverted when plotting
                 pygame.draw.line(
                     surface,
                     c1,
-                    (x1, half_h + y1),
-                    (x2, half_h + y2)
+                    (x1, half_h - y1),
+                    (x2, half_h - y2)
                 )
 
         self.parent.surface.blit(surface, (self.x, self.y))
