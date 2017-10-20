@@ -25,7 +25,7 @@ class Colours(object):
     dark_pale_blue = (0, 101, 205)
 
 class Panel(object):
-    def __init__(self, x, y, w, h, core):
+    def __init__(self, x, y, w, h, core, bg_colour=Colours.pale_blue):
         self.x, self.y = x, y
         self.w, self.h = w, h
         self.widgets = []
@@ -34,7 +34,7 @@ class Panel(object):
         self.debounce = 0
         self.debounce_time = 5
 
-        self.bg_colour = Colours.pale_blue
+        self.bg_colour = bg_colour
 
         self.surface = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
 
@@ -469,6 +469,82 @@ class Button(Widget):
             self.refresh = True
 
         self.parent.update() # Force parent update so callback doesn't block redraw
+
+    def update(self):
+        if self.refresh:
+            self.refresh = False
+            self.draw()
+            return True
+
+
+class Scope(Widget):
+    touch = True
+    def __init__(self, x, y, w, h, bg_colour=Colours.white, scale=1.0, agr_fn=lambda l: sum(l)/len(l), **kw):
+        """Scope widget
+        """
+        Widget.__init__(self, x, y, w, h, **kw)
+
+        self.refresh = False
+        self.bg_colour = bg_colour
+
+        self.data = []
+        self.scale = float(scale)
+        self.aggregation = agr_fn
+
+    def _scale_y(self, height, val):
+        return val * self.scale * height
+
+    def updateData(self, data):
+        recs = len(data)
+
+        half_h = (self.h/2) - 1
+
+        if recs < self.w:
+            spacing = int(self.w / recs)
+            self.data = [(i * spacing, (v / self.scale) * half_h) 
+                         for i, v in enumerate(data)]
+
+        elif recs == self.w:
+            self.data = [(i, (v / self.scale) * half_h)
+                         for i, v in enumerate(data)]
+
+        else:
+            self.data = []
+            
+            # Group samples into buckets averaged over the number of pixels
+            compression = int(recs / self.w)
+            tdata = [data[i:i + compression]
+                     for i in xrange(0, len(data), compression)]
+
+            for i, v in enumerate(tdata):
+                newv = (self.aggregation(v) / self.scale) * half_h
+                self.data.append((i, newv))
+
+        self.refresh = True
+            
+    def draw(self):
+        surface = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+        surface.fill(self.bg_colour)
+
+        half_h = (self.h/2) - 1
+
+        c1 = Colours.blue
+
+        last_cord = (0, 0)
+
+        for i, d in enumerate(self.data):
+            if i > 0:
+                x1, y1 = self.data[i-1]
+                x2, y2 = d
+
+                pygame.draw.line(
+                    surface,
+                    c1,
+                    (x1, half_h + y1),
+                    (x2, half_h + y2)
+                )
+
+        self.parent.surface.blit(surface, (self.x, self.y))
 
     def update(self):
         if self.refresh:
