@@ -26,6 +26,12 @@ class Colours(object):
     pale_blue = (0, 131, 235)
     dark_pale_blue = (0, 101, 205)
 
+def hlBox(surface, x, y, w, h, c1=Colours.white, c2=Colours.black):
+    pygame.draw.line(surface, c1, (x, h), (x, y))
+    pygame.draw.line(surface, c1, (x, y), (w, y))
+    pygame.draw.line(surface, c2, (w, y), (w, h))
+    pygame.draw.line(surface, c2, (w, h), (x, h))
+
 class Panel(object):
     def __init__(self, x, y, w, h, core, bg_colour=Colours.pale_blue):
         self.x, self.y = x, y
@@ -497,11 +503,7 @@ class Button(Widget):
 
         surface.blit(btText, (tx, ty))
        
-        pygame.draw.line(surface, c1, (0, self.h-1), (0, 0))
-        pygame.draw.line(surface, c1, (0, 0), (self.w-1, 0))
-
-        pygame.draw.line(surface, c2, (self.w-1, 0), (self.w-1, self.h-1))
-        pygame.draw.line(surface, c2, (self.w-1, self.h-1), (0, self.h-1))
+        hlBox(surface, 0, 0, self.w - 1, self.h - 1, c1, c2)
 
         self.parent.surface.blit(surface, (self.x, self.y))
 
@@ -654,10 +656,7 @@ class Scope(Widget):
 
         axis_col = (0,0,0)
         # Outside box
-        pygame.draw.line(surface, axis_col, (0, 0), (self.w - 1, 0))
-        pygame.draw.line(surface, axis_col, (self.w - 1, 0), (self.w - 1, self.h))
-        pygame.draw.line(surface, axis_col, (self.w - 1, self.h - 1), (0, self.h - 1))
-        pygame.draw.line(surface, axis_col, (0, self.h - 1), (0,0))
+        hlBox(surface, 0, 0, self.w - 1, self.h - 1, axis_col, axis_col)
 
         # Center cross
         pygame.draw.line(surface, axis_col, (half_w, 0), (half_w, self.h))
@@ -698,44 +697,66 @@ class Scope(Widget):
 
 class Dropdown(Widget):
     touch = True
-    def __init__(self, text, x, y, w, h, align=0, txt_col=Colours.white, items=[],
-                 bg_colour=Colours.pale_blue, font=None, **kw):
-        """Button widget
+    def __init__(self, x, y, w, h, align=0, txt_col=Colours.white, items=[],
+                 default=0, bg_colour=Colours.pale_blue, font=None, **kw):
+        """Dropdown widget
         """
         Widget.__init__(self, x, y, w, h, **kw)
 
-        self.text = text
         self.txt_col = txt_col
         self.align = align
 
+        self.default = default
+
         self.bg_colour = bg_colour
+
+        self.popped = False
+
+        self.items = items
 
         if not font:
             self.font = self.display.font
         else:
             self.font = font
 
-    def setText(self, text):
-        self.text = text
+    def touched(self, p):
+        if self.popped:
+            self.popped = False
+        else:
+            self.popped = True
+
         self.refresh = True
+        self.parent.update() 
 
     def draw(self):
         surface = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
 
+        dtext = self.items[self.default]
         surface.fill(self.bg_colour)
+        btText = self.font.render(dtext, True, self.txt_col)
 
-        btText = self.font.render(self.text, True, self.txt_col)
-
-        tw, th = self.font.size(self.text)
+        tw, th = self.font.size(dtext)
+        tx = (self.w / 2) - (tw / 2)
         ty = (self.h / 2) - (th / 2)
 
-        if self.align == 0:
-            tx = (self.w / 2) - (tw / 2)
-        else:
-            tx = 0
-
         surface.blit(btText, (tx, ty))
-       
-        self.parent.surface.blit(surface, (self.x, self.y))
 
+        if self.popped:
+            c1 = Colours.white
+            c2 = Colours.black
+            item_count = len(self.items)
+
+            popout = pygame.Surface((self.w, self.h * item_count), pygame.SRCALPHA)
+
+            hlBox(surface, 0, 0, self.w, self.h * item_count, c2, c1)
+
+            self.parent.surface.blit(surface, (self.x, self.y))
+
+        else:
+            c1 = Colours.white
+            c2 = Colours.black
+
+        hlBox(surface, 0, 0, self.w - 1, self.h - 1, c1, c2)
+
+        self.parent.surface.blit(surface, (self.x, self.y))
 
