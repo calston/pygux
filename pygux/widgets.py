@@ -7,7 +7,8 @@ from pygame.locals import *
 class Colours(object):
     # A bunch of random colours
 
-    white = (255, 255, 255)
+    #white = (255, 255, 255)
+    white = (192, 192, 192)
     very_light_gray = (192, 192, 192)
     light_gray = (128, 128, 128)
     med_gray = (64, 64, 64)
@@ -70,7 +71,7 @@ class Panel(object):
 
             for w in reversed(self.widgets):
                 if w.touch and w.inside(newpos):
-                    w.touched()
+                    w.touched(newpos)
                     break
 
     def mouseUp(self, event):
@@ -93,6 +94,7 @@ class Panel(object):
             fl = fl or r
 
         if fl:
+            print "Blit and flip"
             self.display.blit(self.surface, (self.x, self.y))
             self.display.flip()
 
@@ -105,9 +107,14 @@ class Widget(object):
         self.parent = parent
         self.display = display
 
+        self.refresh = False
+
     def update(self):
         # Called on every display loop - must return True if re-render required
-        return False
+        if self.refresh:
+            self.refresh = False
+            self.draw()
+            return True
 
     def draw(self):
         # Draw the initial widget
@@ -120,8 +127,51 @@ class Widget(object):
                 return True
         return False
 
-    def touched(self):
+    def touched(self, position):
         return False
+
+class Text(Widget):
+    touch = True
+    def __init__(self, text, x, y, w, h, align=0, txt_col=Colours.pale_blue,
+                 bg_colour=Colours.white, font=None, **kw):
+        """Button widget
+        """
+        Widget.__init__(self, x, y, w, h, **kw)
+
+        self.text = text
+        self.txt_col = txt_col
+        self.align = align
+
+        self.bg_colour = bg_colour
+
+        if not font:
+            self.font = self.display.font
+        else:
+            self.font = font
+
+    def setText(self, text):
+        self.text = text
+        self.refresh = True
+
+    def draw(self):
+        surface = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+
+        surface.fill(self.bg_colour)
+
+        btText = self.font.render(self.text, True, self.txt_col)
+
+        tw, th = self.font.size(self.text)
+        ty = (self.h / 2) - (th / 2)
+
+        if self.align == 0:
+            tx = (self.w / 2) - (tw / 2)
+        else:
+            tx = 0
+
+        surface.blit(btText, (tx, ty))
+       
+        self.parent.surface.blit(surface, (self.x, self.y))
+
 
 class SevenSegment(Widget):
     charMap = {
@@ -342,7 +392,7 @@ class FancyGauge(Widget):
             self.lastV = self.value
             return True
 
-    def touched(self):
+    def touched(self, position):
         if self.callback:
             self.callback()
 
@@ -409,7 +459,6 @@ class Button(Widget):
         Widget.__init__(self, x, y, w, h, **kw)
 
         self.state = 0
-        self.refresh = False
 
         self.text = text
         self.txt_col = txt_col
@@ -460,7 +509,7 @@ class Button(Widget):
 
         self.parent.surface.blit(surface, (self.x, self.y))
 
-    def touched(self):
+    def touched(self, position):
         if self.toggle:
             self.state = not self.state
 
@@ -469,7 +518,8 @@ class Button(Widget):
         else:
             self.refresh = True
 
-        self.parent.update() # Force parent update so callback doesn't block redraw
+        if self.refresh:
+            self.parent.update() # Force parent update so callback doesn't block redraw
 
     def update(self):
         if self.refresh:
@@ -477,6 +527,80 @@ class Button(Widget):
             self.draw()
             return True
 
+class ButtonGroup(Widget):
+    touch = True
+    def __init__(self, items, x, y, w, h, callback=None, vertical=True,
+                 toggle_colour=Colours.dark_pale_blue,
+                 toggle_txt_col=Colours.black,
+                 txt_col=Colours.white,
+                 bg_colour=Colours.pale_blue, **kw):
+
+        """Group of buttons
+        """
+        Widget.__init__(self, x, y, w, h, **kw)
+
+        self.bg_colour = bg_colour
+        self.txt_col = txt_col
+        self.toggle_colour = toggle_colour
+        self.toggle_txt_col = toggle_txt_col
+
+        self.vertical = vertical
+
+        self.items = self.construct(items)
+
+    def construct(self, items):
+        self.surface = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+
+        item_set = []
+
+        num_items = len(items)
+
+        if self.vertical:
+            x_step = 0
+            y_step = self.h / num_items
+            w = self.w
+            h = y_step - 1
+        else:
+            x_step = self.w / num_items
+            y_step = 0
+            w = x_step - 1
+            h = self.h
+
+        for i, item in enumerate(items):
+            text = item.pop('text')
+            btn = Button(text, x_step * i, y_step * i, w, h, **item)
+            btn.display = self.display
+            btn.parent = self
+            btn.index = i
+
+            item_set.append(btn)
+
+        return item_set
+
+    def draw(self):
+        for btn in self.items:
+            btn.draw()
+
+        self.parent.surface.blit(self.surface, (self.x, self.y))
+
+    def touched(self, position):
+        for item in self.items:
+            if item.touch and item.inside(position):
+                print "Touched", item.text
+                item.touched(position)
+
+        self.parent.update() 
+
+    def update(self):
+        fl = False
+        for item in self.items:
+            r = item.update()
+            fl = fl or r
+        
+        if fl:
+            self.draw()
+
+        return fl
 
 class Scope(Widget):
     touch = True
@@ -485,7 +609,6 @@ class Scope(Widget):
         """
         Widget.__init__(self, x, y, w, h, **kw)
 
-        self.refresh = False
         self.bg_colour = bg_colour
 
         self.data = []
@@ -576,8 +699,46 @@ class Scope(Widget):
 
         self.parent.surface.blit(surface, (self.x, self.y))
 
-    def update(self):
-        if self.refresh:
-            self.refresh = False
-            self.draw()
-            return True
+class Dropdown(Widget):
+    touch = True
+    def __init__(self, text, x, y, w, h, align=0, txt_col=Colours.white, items=[],
+                 bg_colour=Colours.pale_blue, font=None, **kw):
+        """Button widget
+        """
+        Widget.__init__(self, x, y, w, h, **kw)
+
+        self.text = text
+        self.txt_col = txt_col
+        self.align = align
+
+        self.bg_colour = bg_colour
+
+        if not font:
+            self.font = self.display.font
+        else:
+            self.font = font
+
+    def setText(self, text):
+        self.text = text
+        self.refresh = True
+
+    def draw(self):
+        surface = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+
+        surface.fill(self.bg_colour)
+
+        btText = self.font.render(self.text, True, self.txt_col)
+
+        tw, th = self.font.size(self.text)
+        ty = (self.h / 2) - (th / 2)
+
+        if self.align == 0:
+            tx = (self.w / 2) - (tw / 2)
+        else:
+            tx = 0
+
+        surface.blit(btText, (tx, ty))
+       
+        self.parent.surface.blit(surface, (self.x, self.y))
+
+
