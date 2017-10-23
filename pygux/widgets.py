@@ -94,9 +94,11 @@ class Panel(object):
             fl = fl or r
 
         if fl:
-            print "Blit and flip"
-            self.display.blit(self.surface, (self.x, self.y))
-            self.display.flip()
+            self.redraw()
+
+    def redraw(self):
+        self.display.blit(self.surface, (self.x, self.y))
+        self.display.flip()
 
 class Widget(object):
     touch = False
@@ -586,11 +588,8 @@ class ButtonGroup(Widget):
     def touched(self, position):
         for item in self.items:
             if item.touch and item.inside(position):
-                print "Touched", item.text
                 item.touched(position)
-
-        self.parent.update() 
-
+        
     def update(self):
         fl = False
         for item in self.items:
@@ -599,6 +598,7 @@ class ButtonGroup(Widget):
         
         if fl:
             self.draw()
+            self.parent.redraw()
 
         return fl
 
