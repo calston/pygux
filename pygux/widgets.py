@@ -33,8 +33,6 @@ class Panel(object):
         self.widgets = []
         self.core = core
         self.display = core.display
-        self.debounce = 0
-        self.debounce_time = 5
 
         self.bg_colour = bg_colour
 
@@ -65,9 +63,6 @@ class Panel(object):
     def mouseDown(self, event):
         if self.inside(event.pos):
             newpos = (event.pos[0] - self.x, event.pos[1] - self.y)
-            now = time.time() * 1000
-            if (now - self.debounce) < self.debounce_time:
-                return False
 
             for w in reversed(self.widgets):
                 if w.touch and w.inside(newpos):
@@ -75,7 +70,6 @@ class Panel(object):
                     break
 
     def mouseUp(self, event):
-        self.debounce = 0
         pass
 
     def draw(self):
@@ -454,13 +448,13 @@ class Button(Widget):
     touch = True
     def __init__(self, text, x, y, w, h, callback=None, toggle=False,
                  toggle_text=None, toggle_colour=Colours.dark_pale_blue,
-                 toggle_txt_col=Colours.black, txt_col=Colours.white,
+                 toggle_txt_col=Colours.black, txt_col=Colours.white, state=False,
                  bg_colour=Colours.pale_blue, font=None, **kw):
         """Button widget
         """
         Widget.__init__(self, x, y, w, h, **kw)
 
-        self.state = 0
+        self.state = state
 
         self.text = text
         self.txt_col = txt_col
@@ -585,11 +579,14 @@ class ButtonGroup(Widget):
 
         self.parent.surface.blit(self.surface, (self.x, self.y))
 
-    def touched(self, position):
+    def touched(self, p):
+        position = (p[0] - self.x, p[1] - self.y)
         for item in self.items:
             if item.touch and item.inside(position):
                 item.touched(position)
-        
+
+        return True
+                    
     def update(self):
         fl = False
         for item in self.items:
@@ -654,20 +651,20 @@ class Scope(Widget):
         half_h = (self.h/2)
         half_w = (self.w/2)
 
-        axis_col = Colours.med_gray
 
+        axis_col = (0,0,0)
         # Outside box
-        pygame.draw.line(surface, axis_col, (0, 0), (self.w, 0))
-        pygame.draw.line(surface, axis_col, (self.w, 0), (self.w, self.h))
-        pygame.draw.line(surface, axis_col, (self.w, self.h), (0, self.h))
-        pygame.draw.line(surface, axis_col, (0, self.h), (0,0))
+        pygame.draw.line(surface, axis_col, (0, 0), (self.w - 1, 0))
+        pygame.draw.line(surface, axis_col, (self.w - 1, 0), (self.w - 1, self.h))
+        pygame.draw.line(surface, axis_col, (self.w - 1, self.h - 1), (0, self.h - 1))
+        pygame.draw.line(surface, axis_col, (0, self.h - 1), (0,0))
 
         # Center cross
         pygame.draw.line(surface, axis_col, (half_w, 0), (half_w, self.h))
         pygame.draw.line(surface, axis_col, (0, half_h), (self.w, half_h))
 
         # Major ticks
-        major_col = Colours.very_light_gray
+        major_col = (150, 150, 150)
         gap = self.w/10
         for i in range(4):
             x = gap * (i + 1)
