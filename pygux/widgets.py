@@ -79,7 +79,6 @@ class Panel(object):
         pass
 
     def draw(self):
-
         self.surface.fill(self.bg_colour)
         
         for w in self.widgets:
@@ -697,47 +696,89 @@ class Scope(Widget):
 
 class Dropdown(Widget):
     touch = True
-    def __init__(self, x, y, w, h, align=0, txt_col=Colours.white, items=[],
+    def __init__(self, x, y, w, h, align=0, txt_col=Colours.white, items=[], callback=None,
                  default=0, bg_colour=Colours.pale_blue, font=None, **kw):
         """Dropdown widget
         """
         Widget.__init__(self, x, y, w, h, **kw)
 
+        self.orig = (x, y, w, h)
+
         self.txt_col = txt_col
         self.align = align
-
-        self.default = default
-
         self.bg_colour = bg_colour
 
         self.popped = False
+        self.skip_draw = False
 
-        self.items = items
+        self.selected = default
 
         if not font:
             self.font = self.display.font
         else:
             self.font = font
 
+        self.callback = callback
+
+        self.set_items(items)
+
+    def set_items(self, items):
+        self.items = []
+        for index, item in enumerate(items):
+            # Calculate dimensions once to speed up rendering a bit
+            y = index * self.h
+            btText = self.font.render(item, True, self.txt_col)
+            tw, th = self.font.size(item)
+            tx = (self.w / 2) - (tw / 2)
+            ty = (self.h / 2) - (th / 2)
+
+            self.items.append((
+                item,
+                btText,
+                (1, 1 + y, self.w - 2, self.h - 1),
+                (1 + tx, 1 + ty + y),
+            ))
+
+    def inside_inside(self, pos, box):
+        x, y = pos
+        if (x >= box[0]) and (x <= (box[0] + box[2])):
+            if (y >= box[1]) and (y <= (box[1] + box[3])):
+                return True
+        return False
+
     def touched(self, p):
         if self.popped:
+            if p[0] > self.orig[2]:
+                poppos = (p[0] - self.orig[2] - self.orig[0], p[1] - self.orig[1])
+
+                for index, item in enumerate(self.items):
+                    if self.inside_inside(poppos, item[2]):
+                        self.selected = index
+                        self.callback(self.selected)
+
             self.popped = False
         else:
             self.popped = True
+            self.w = self.orig[2] * 2
+            self.h = self.orig[3] * len(self.items)
 
         self.refresh = True
         self.parent.update() 
 
     def draw(self):
-        surface = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+        if self.skip_draw:
+            return
+        x, y, w, h = self.orig
+        surface = pygame.Surface((w, h), pygame.SRCALPHA)
 
-        dtext = self.items[self.default]
         surface.fill(self.bg_colour)
+
+        dtext = self.items[self.selected][0]
         btText = self.font.render(dtext, True, self.txt_col)
 
         tw, th = self.font.size(dtext)
-        tx = (self.w / 2) - (tw / 2)
-        ty = (self.h / 2) - (th / 2)
+        tx = (w / 2) - (tw / 2)
+        ty = (h / 2) - (th / 2)
 
         surface.blit(btText, (tx, ty))
 
@@ -746,17 +787,26 @@ class Dropdown(Widget):
             c2 = Colours.black
             item_count = len(self.items)
 
-            popout = pygame.Surface((self.w, self.h * item_count), pygame.SRCALPHA)
+            popout = pygame.Surface((1 + w, 1 + (h * item_count)), pygame.SRCALPHA)
+            popout.fill(self.bg_colour)
+            hlBox(popout, 0, 0, w, h * item_count, c2, c1)
 
-            hlBox(surface, 0, 0, self.w, self.h * item_count, c2, c1)
+            for index, item in enumerate(self.items):
+                item, text, box, font_pos = item
+                hlBox(popout, *box, c1=c1, c2=c2)
+                popout.blit(text, font_pos)
 
-            self.parent.surface.blit(surface, (self.x, self.y))
+            self.parent.surface.blit(popout,
+                (x + w, y))
 
         else:
             c1 = Colours.white
             c2 = Colours.black
+            self.skip_draw = True
+            self.parent.draw()
+            self.skip_draw = False
 
-        hlBox(surface, 0, 0, self.w - 1, self.h - 1, c1, c2)
+        hlBox(surface, 0, 0, w - 1, h - 1, c1, c2)
 
-        self.parent.surface.blit(surface, (self.x, self.y))
+        self.parent.surface.blit(surface, (x, y))
 

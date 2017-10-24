@@ -10,6 +10,9 @@ class Display(object):
 
         self.display = pygame.display.set_mode((800, 480), pygame.HWSURFACE, 24)
 
+        self.w = 800
+        self.h = 480
+
         self.display.fill(Colours.white)
 
         self.font = pygame.font.Font(font, font_size)
