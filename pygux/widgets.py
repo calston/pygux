@@ -470,10 +470,7 @@ class Button(Widget):
         self.toggle = toggle
         self.toggle_colour = toggle_colour
 
-        if toggle_text:
-            self.toggle_text = toggle_text
-        else:
-            self.toggle_text = self.text
+        self.toggle_text = toggle_text
 
         self.toggle_txt_col = toggle_txt_col
 
@@ -492,7 +489,10 @@ class Button(Widget):
             c2 = Colours.black
         else:
             surface.fill(self.toggle_colour)
-            btText = self.font.render(self.toggle_text, True, self.toggle_txt_col)
+            if self.toggle_text:
+                btText = self.font.render(self.toggle_text, True, self.toggle_txt_col)
+            else:
+                btText = self.font.render(self.text, True, self.toggle_txt_col)
             c1 = Colours.black
             c2 = Colours.white
 
@@ -652,9 +652,9 @@ class Chart(Widget):
             self.data = []
             
             # Group samples into buckets averaged over the number of pixels
-            compression = int(num_recs / self.w)
-            tdata = [data[i:i + compression]
-                     for i in xrange(0, len(data), compression)]
+            comp = int(num_recs / self.w)
+            tdata = [data[i:i + comp]
+                     for i in xrange(0, len(data), comp)]
 
             for i, v in enumerate(tdata):
                 newv = int((self.aggregation(v) - self.y_min) * self.scale)
@@ -714,7 +714,7 @@ class Chart(Widget):
 
 class Scope(Widget):
     touch = True
-    def __init__(self, x, y, w, h, bg_colour=Colours.white, scale=1.0, agr_fn=lambda l: max(l), **kw):
+    def __init__(self, x, y, w, h, bg_colour=Colours.white, scale=1.0, agr_fn=lambda l: sum(l)/float(len(l)), **kw):
         """Scope widget
         """
         Widget.__init__(self, x, y, w, h, **kw)
@@ -722,50 +722,23 @@ class Scope(Widget):
         self.bg_colour = bg_colour
 
         self.data = []
+
+        # Starting timebase (miliseconds)
+        self.timebase = 0.001
         self.scale = float(scale)
         self.aggregation = agr_fn
+        self.raw_data = []
 
-    def _scale_y(self, height, val):
-        return val * self.scale * height
+        self.more_data = False
 
-    def updateData(self, data):
-        num_recs = len(data)
+        self.grid = self.construct_grid()
 
-        half_h = (self.h/2) - 1
-
-        if num_recs < self.w:
-            spacing = int(self.w / num_recs)
-            self.data = [(i * spacing, (v / self.scale) * half_h) 
-                         for i, v in enumerate(data)]
-
-        elif num_recs == self.w:
-            self.data = [(i, (v / self.scale) * half_h)
-                         for i, v in enumerate(data)]
-
-        else:
-            self.data = []
-            
-            # Group samples into buckets averaged over the number of pixels
-            compression = int(num_recs / self.w)
-            tdata = [data[i:i + compression]
-                     for i in xrange(0, len(data), compression)]
-
-            for i, v in enumerate(tdata):
-                newv = int((self.aggregation(v) / self.scale) * half_h)
-
-                self.data.append((i, newv))
-
-        self.refresh = True
-            
-    def draw(self):
+    def construct_grid(self):
         surface = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
-        surface.fill(self.bg_colour)
+        axis_col = (0,0,0)
 
         half_h = (self.h/2)
         half_w = (self.w/2)
-
-
-        axis_col = (0,0,0)
         # Outside box
         hlBox(surface, 0, 0, self.w - 1, self.h - 1, axis_col, axis_col)
 
@@ -787,13 +760,55 @@ class Scope(Widget):
             pygame.draw.line(surface, major_col, (0, half_h + y), (self.w, half_h + y))
             pygame.draw.line(surface, major_col, (0, half_h - y), (self.w, half_h - y))
 
+        return surface
+
+    def _scale_y(self, height, val):
+        return val * self.scale * height
+
+    def updateData(self, data, time_step):
+        half_h = (self.h/2) - 1
+        maxtime = self.timebase * 10
+        samples = 1 + int(maxtime / time_step)
+        self.data = []
+
+        if samples < len(data):
+            data = data[:samples]
+
+        if samples > len(data):
+            print "Increase decimation"
+            return 
+
+        if samples > self.w:
+            comp = int(math.ceil(samples / float(self.w)))
+
+            tdata = [data[i:i + comp]
+                 for i in xrange(0, len(data), comp)]
+
+            for i, v in enumerate(tdata):
+                newv = int((self.aggregation(v) / self.scale) * half_h)
+                self.data.append((i, newv))
+        else:
+            xstep = self.w / float(samples)
+            self.data = [(int(i * xstep), int((v / self.scale) * half_h)) for i, v in enumerate(data)]
+
+        self.refresh = True
+
+    def draw(self):
+        surface = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+        surface.fill(self.bg_colour)
+
+        surface.blit(self.grid, (0,0))
+
+        half_h = (self.h/2)
+        half_w = (self.w/2)
+
         c1 = Colours.blue
 
         # Plot the lines
         for i, d in enumerate(self.data):
             if i > 0:
-                x1, y1 = self.data[i-1]
                 x2, y2 = d
+                x1, y1 = self.data[i - 1]
 
                 # Y is inverted when plotting
                 pygame.draw.line(
