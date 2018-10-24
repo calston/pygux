@@ -7,19 +7,19 @@ from pygux.colours import Colours
 
 
 class Panel(object):
-    def __init__(self, x, y, w, h, core, bg_colour=Colours.pale_blue):
+    def __init__(self, x, y, w, h, app, bg_colour=Colours.pale_blue):
         self.x, self.y = x, y
         self.w, self.h = w, h
         self.widgets = []
-        self.core = core
-        self.display = core.display
+        self.app = app 
+        self.display = app.display
 
         self.bg_colour = bg_colour
 
         self.surface = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
 
-        self.core.registerHandler(MOUSEBUTTONDOWN, self.mouseDown)
-        self.core.registerHandler(MOUSEBUTTONUP, self.mouseUp)
+        self.app.registerHandler(MOUSEBUTTONDOWN, self.mouseDown)
+        self.app.registerHandler(MOUSEBUTTONUP, self.mouseUp)
 
     def addWidgetObj(self, widget):
         widget.parent = self

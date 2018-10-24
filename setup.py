@@ -13,6 +13,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'pygame',
+        'pycairo'
     ],
     classifiers=[
         'License :: OSI Approved :: MIT License',

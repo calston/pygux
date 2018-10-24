@@ -4,3 +4,4 @@ from pygux.widgets.charts import Chart, Scope
 from pygux.widgets.gauge import SevenSegment, FancyGauge, OldSchoolMeter
 from pygux.widgets.panel import Panel
 from pygux.widgets.widget import Text
+from pygux.widgets.sprite import Sprite
