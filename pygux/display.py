@@ -1,14 +1,14 @@
 import pygame, sys, os
 from pygame.locals import *
 
-from pygux.widgets import Colours
+from pygux.widgets.colours import Colours
 
 class Display(object):
-    def __init__(self, bg_colour=Colours.white, font_size=12,
+    def __init__(self, bg_colour=Colours.black, font_size=12, w=800, h=480,
                  font="/usr/share/fonts/truetype/freefont/FreeSans.ttf"):
         pygame.init()
 
-        self.display = pygame.display.set_mode((800, 480), pygame.HWSURFACE, 24)
+        self.display = pygame.display.set_mode((w, h), pygame.HWSURFACE, 24)
 
         self.w = 800
         self.h = 480
@@ -46,6 +46,14 @@ class TouchScreen(Display):
         os.environ["TSLIB_CALIBFILE"] = "/etc/pointercal"
         os.environ["TSLIB_FBDEVICE"] = fbdev
         os.environ["TSLIB_TSDEVICE"] = tsdev
+
+        Display.__init__(self, **kw)
+
+        pygame.mouse.set_visible(0)
+
+class Screen(Display):
+    def __init__(self, fbdev='/dev/fb1', tsdev='/dev/input/touchscreen', **kw):
+        os.environ["SDL_FBDEV"] = fbdev
 
         Display.__init__(self, **kw)
 

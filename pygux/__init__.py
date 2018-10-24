@@ -4,8 +4,7 @@ from pygame.locals import *
 
 from pygux import display
 
-from pygux.widgets import Colours
-from pygux import widgets 
+from pygux.colours import Colours
 from pygux import fa
 
 
@@ -63,7 +62,7 @@ class Application(object):
         self.initializeVideo()
         self.mainLoop()
 
-    def stop(self, event):
+    def stop(self):
         self.terminated = True
 
     def keyDown(self, event):
