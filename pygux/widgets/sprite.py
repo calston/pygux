@@ -9,7 +9,7 @@ from pygux.colours import Colours
 
 
 class Sprite(Widget):
-    def __init__(self, x, y, w, h, image=None, callback=None,**kw):
+    def __init__(self, x, y, w, h, image=None, callback=None, **kw):
         """Sprite widget
         """
         Widget.__init__(self, x, y, w, h, **kw)

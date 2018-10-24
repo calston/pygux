@@ -10,8 +10,8 @@ class Display(object):
 
         self.display = pygame.display.set_mode((w, h), pygame.HWSURFACE, 24)
 
-        self.w = 800
-        self.h = 480
+        self.w = w
+        self.h = h
 
         self.display.fill(Colours.white)
 

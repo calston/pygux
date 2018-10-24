@@ -10,9 +10,16 @@ class Panel(object):
     def __init__(self, x, y, w, h, app, bg_colour=Colours.pale_blue):
         self.x, self.y = x, y
         self.w, self.h = w, h
+
         self.widgets = []
         self.app = app 
         self.display = app.display
+
+        if self.w < 0:
+            self.w = self.display.w - self.x
+
+        if self.h < 0:
+            self.h = self.display.h - self.y
 
         self.bg_colour = bg_colour
 

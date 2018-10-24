@@ -7,7 +7,7 @@ from pygux.display import Display
 
 class TestApp(Application):
     def create_sidebar(self):
-        self.sidebar = Panel(0, 0, 32, 128, self)
+        self.sidebar = Panel(0, 0, 32, -1, self)
 
         fontawesome = pygame.font.Font('/usr/share/fonts/truetype/freefont/FreeSans.ttf', 10)
 
@@ -33,11 +33,11 @@ class TestApp(Application):
         self.main.update()
 
     def initializeVideo(self):
-        self.display = Display(h=128, w=128)
+        self.display = Display(h=256, w=256)
 
         self.create_sidebar()
 
-        self.main = Panel(32, 0, 96, 128, self)
+        self.main = Panel(32, 0, -1, -1, self)
         self.main.addWidget(Sprite, 0, 0, 64, 64, "bird1_after.jpg")
         self.main.draw()
 
